@@ -321,7 +321,8 @@ module.exports = {
           .get()
           .collection(collection.ITEM_COLLECTION)
           .findOne({ _id: ObjectID(id) });
-        return res.status(200).json({ message: 'Item details get successfully', item });
+        if (item) return res.status(200).json({ message: 'Item details get successfully', item });
+        else return res.status(400).json({ errors: 'Item doesnot exist with this ID' });
       });
     } catch (error) {
       console.log(error);
