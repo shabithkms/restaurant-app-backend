@@ -1,7 +1,6 @@
 const db = require('../config/connection');
 const collection = require('../config/collection');
 const { ObjectID } = require('mongodb');
-
 module.exports = {
   doAdminLogin: (req, res) => {
     //   Destructure admin data
@@ -142,7 +141,8 @@ module.exports = {
   getItemDetails: (req, res) => {
     try {
       const { id } = req.params;
-      if (!id) return res.status(500).json({ errors: "Didn't get Id" });
+      if (!ObjectID.isValid(id)) return res.status(500).json({ errors: 'Please use a valid id' });
+
       return new Promise(async () => {
         let item = await db
           .get()
@@ -159,7 +159,8 @@ module.exports = {
   editItem: (req, res) => {
     try {
       const { Name, Category, Description, Price, id } = req.body.formData;
-      if (!id) return res.status(500).json({ errors: "Didn't get Id" });
+      if (!ObjectID.isValid(id)) return res.status(500).json({ errors: 'Please use a valid id' });
+
       return new Promise(() => {
         db.get()
           .collection(collection.ITEM_COLLECTION)
@@ -260,6 +261,8 @@ module.exports = {
   getModifierDetails: (req, res) => {
     try {
       const { id } = req.params;
+      if (!ObjectID.isValid(id)) return res.status(500).json({ errors: 'Please use a valid id' });
+
       return new Promise(async () => {
         let modifier = await db
           .get()
@@ -313,6 +316,7 @@ module.exports = {
     try {
       const { id } = req.params;
       return new Promise(async () => {
+        if (!ObjectID.isValid(id)) return res.status(500).json({ errors: 'Please use a valid id' });
         let item = await db
           .get()
           .collection(collection.ITEM_COLLECTION)
