@@ -6,6 +6,7 @@ module.exports = {
   doAdminLogin: (req, res) => {
     //   Destructure admin data
     const { Email, Password } = req.body;
+    console.log(req.body);
 
     try {
       return new Promise(async (resolve, reject) => {
@@ -15,6 +16,7 @@ module.exports = {
           // Matching passwords
           if (admin.Password === Password) {
             // Password matched
+            delete admin.Password;
             return res.status(200).json({ message: 'Logged in successfully', admin });
           } else {
             // Password doesnot match
@@ -140,6 +142,7 @@ module.exports = {
   getItemDetails: (req, res) => {
     try {
       const { id } = req.params;
+      if (!id) return res.status(500).json({ errors: "Didn't get Id" });
       return new Promise(async () => {
         let item = await db
           .get()
@@ -156,6 +159,7 @@ module.exports = {
   editItem: (req, res) => {
     try {
       const { Name, Category, Description, Price, id } = req.body.formData;
+      if (!id) return res.status(500).json({ errors: "Didn't get Id" });
       return new Promise(() => {
         db.get()
           .collection(collection.ITEM_COLLECTION)
@@ -245,7 +249,8 @@ module.exports = {
           .deleteOne({ _id: ObjectID(id) })
           .then((response) => {
             console.log(response);
-            res.status(200).json({ message: 'Deleted successfully' });
+            if (response.deletedCount > 0) res.status(200).json({ message: 'Deleted successfully' });
+            else res.status(200).json({ message: 'Something error' });
           });
       });
     } catch (error) {
@@ -266,7 +271,7 @@ module.exports = {
       return res.status(500).json({ errors: error.message });
     }
   },
-
+  // Edit modifier
   editModifier: (req, res) => {
     try {
       const { id, Name, Price } = req.body.formData;

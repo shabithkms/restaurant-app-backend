@@ -21,15 +21,16 @@ router.patch('/edit-item', adminController.editItem);
 router.patch('/change-item-status', adminController.changeItemStatus);
 
 // Modifier Management
-router.post('/add-new-modifier',adminController.addNewModifier)
-router.get('/get-modifiers',adminController.getModifiers)
-router.delete('/delete-modifier',adminController.deleteModifier)
-router.get('/get-modifier-details/:id',adminController.getModifierDetails)
-router.patch('/edit-modifier',adminController.editModifier)
+router.post('/add-new-modifier', adminController.addNewModifier);
+router.get('/get-modifiers', adminController.getModifiers);
+router.delete('/delete-modifier', adminController.deleteModifier);
+router.get('/get-modifier-details/:id', adminController.getModifierDetails);
+router.patch('/edit-modifier', adminController.editModifier);
 
 // Public API
 // API to list all available menu
-router.get('/get-all-available',adminController.getAllAvailable)
-router.get('/get-single-item/:id',adminController.getSingleItem)
+router.get('/get-all-available', adminController.getAllAvailable);
+// API to get a single item details with ID
+router.get('/get-single-item/:id', adminController.getSingleItem);
 
 module.exports = router;
