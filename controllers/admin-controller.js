@@ -244,11 +244,78 @@ module.exports = {
           .collection(collection.MODIFIER_COLLECTION)
           .deleteOne({ _id: ObjectID(id) })
           .then((response) => {
-            console.log(response)
+            console.log(response);
             res.status(200).json({ message: 'Deleted successfully' });
           });
       });
     } catch (error) {
+      return res.status(500).json({ errors: error.message });
+    }
+  },
+  getModifierDetails: (req, res) => {
+    try {
+      const { id } = req.params;
+      return new Promise(async () => {
+        let modifier = await db
+          .get()
+          .collection(collection.MODIFIER_COLLECTION)
+          .findOne({ _id: ObjectID(id) });
+        return res.status(200).json({ message: 'success', modifier });
+      });
+    } catch (error) {
+      return res.status(500).json({ errors: error.message });
+    }
+  },
+
+  editModifier: (req, res) => {
+    try {
+      const { id, Name, Price } = req.body.formData;
+      return new Promise(async () => {
+        db.get()
+          .collection(collection.MODIFIER_COLLECTION)
+          .updateOne(
+            { _id: ObjectID(id) },
+            {
+              $set: {
+                Name,
+                Price,
+              },
+            }
+          )
+          .then(() => {
+            return res.status(200).json({ message: 'Updated successfully' });
+          });
+      });
+    } catch (error) {
+      return res.status(500).json({ errors: error.message });
+    }
+  },
+
+  // PUBLIC API
+  // get all available menu
+  getAllAvailable: (req, res) => {
+    try {
+      return new Promise(async () => {
+        let items = await db.get().collection(collection.ITEM_COLLECTION).find({ isAvailable: true }).toArray();
+        return res.status(200).json({ message: 'Get items successfully', items });
+      });
+    } catch (error) {
+      return res.status(500).json({ errors: error.message });
+    }
+  },
+  // Get single menu item details
+  getSingleItem: (req, res) => {
+    try {
+      const { id } = req.params;
+      return new Promise(async () => {
+        let item = await db
+          .get()
+          .collection(collection.ITEM_COLLECTION)
+          .findOne({ _id: ObjectID(id) });
+        return res.status(200).json({ message: 'Item details get successfully', item });
+      });
+    } catch (error) {
+      console.log(error);
       return res.status(500).json({ errors: error.message });
     }
   },
