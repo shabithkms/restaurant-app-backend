@@ -14,7 +14,7 @@ module.exports = {
         if (admin) {
           // Matching passwords
           if (admin.Password === Password) {
-            // Password matched 
+            // Password matched
             return res.status(200).json({ message: 'Logged in successfully', admin });
           } else {
             // Password doesnot match
@@ -38,6 +38,7 @@ module.exports = {
         return res.status(200).json({ message: 'Success', categories });
       });
     } catch (error) {
+      console.log(error);
       return res.status(500).json({ errors: error.message });
     }
   },
@@ -65,6 +66,7 @@ module.exports = {
       return res.status(500).json({ errors: error.message });
     }
   },
+  // Delete category with ID
   deleteCategory: (req, res) => {
     try {
       const { id } = req.body;
@@ -80,10 +82,12 @@ module.exports = {
       return res.status(500).json({ errors: error.message });
     }
   },
+  // Add new Domain
   addNewItem: (req, res) => {
     try {
       console.log(req.body);
       const { Name } = req.body;
+      req.body.isAvailable = true;
       return new Promise(async () => {
         let exist = await db.get().collection(collection.ITEM_COLLECTION).findOne({ Name });
         if (!exist) {
@@ -101,11 +105,148 @@ module.exports = {
       return res.status(500).json({ errors: error.message });
     }
   },
+  // Get all items
   getAllItems: (req, res) => {
     try {
       return new Promise(async () => {
         let items = await db.get().collection(collection.ITEM_COLLECTION).find().toArray();
         return res.status(200).json({ message: 'Success', items });
+      });
+    } catch (error) {
+      return res.status(500).json({ errors: error.message });
+    }
+  },
+  // Delete item with ID
+  deleteItem: (req, res) => {
+    try {
+      const { id } = req.body;
+      return new Promise((resolve, reject) => {
+        db.get()
+          .collection(collection.ITEM_COLLECTION)
+          .deleteOne({ _id: ObjectID(id) })
+          .then(() => {
+            return res.status(200).json({ message: 'Item deleted successfully' });
+          })
+          .catch((err) => {
+            console.log(err);
+          });
+      });
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json({ errors: error.message });
+    }
+  },
+  // Get item details with ID
+  getItemDetails: (req, res) => {
+    try {
+      const { id } = req.params;
+      return new Promise(async () => {
+        let item = await db
+          .get()
+          .collection(collection.ITEM_COLLECTION)
+          .findOne({ _id: ObjectID(id) });
+        return res.status(200).json({ message: 'Success', item });
+      });
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json({ errors: error.message });
+    }
+  },
+  // Update Item details
+  editItem: (req, res) => {
+    try {
+      const { Name, Category, Description, Price, id } = req.body.formData;
+      return new Promise(() => {
+        db.get()
+          .collection(collection.ITEM_COLLECTION)
+          .updateOne(
+            { _id: ObjectID(id) },
+            {
+              $set: {
+                Name,
+                Category,
+                Description,
+                Price,
+              },
+            }
+          )
+          .then((response) => {
+            return res.status(200).json({ message: 'updated successfully' });
+          });
+      });
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json({ errors: error.message });
+    }
+  },
+  // Change item availability
+  changeItemStatus: (req, res) => {
+    try {
+      return new Promise(() => {
+        const { id, status } = req.body;
+        db.get()
+          .collection(collection.ITEM_COLLECTION)
+          .updateOne(
+            { _id: ObjectID(id) },
+            {
+              $set: {
+                isAvailable: status,
+              },
+            }
+          )
+          .then((response) => {
+            res.status(200).json({ message: 'success' });
+          });
+      });
+    } catch (error) {
+      return res.status(500).json({ errors: error.message });
+    }
+  },
+
+  // Modifier Management
+  addNewModifier: (req, res) => {
+    try {
+      const { Name, Price } = req.body;
+      return new Promise(async () => {
+        let exist = await db.get().collection(collection.MODIFIER_COLLECTION).findOne({ Name });
+        if (!exist) {
+          db.get()
+            .collection(collection.MODIFIER_COLLECTION)
+            .insertOne({ Name, Price })
+            .then((response) => {
+              return res.status(200).json({ message: 'Added successfully' });
+            });
+        } else {
+          return res.status(400).json({ errors: 'Item already exist' });
+        }
+      });
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json({ errors: error.message });
+    }
+  },
+  // Get all modifiers
+  getModifiers: (req, res) => {
+    try {
+      return new Promise(async () => {
+        let modifiers = await db.get().collection(collection.MODIFIER_COLLECTION).find().toArray();
+        res.status(200).json({ message: 'success', modifiers });
+      });
+    } catch (error) {
+      return res.status(500).json({ errors: error.message });
+    }
+  },
+  deleteModifier: (req, res) => {
+    try {
+      const { id } = req.body;
+      return new Promise(async () => {
+        db.get()
+          .collection(collection.MODIFIER_COLLECTION)
+          .deleteOne({ _id: ObjectID(id) })
+          .then((response) => {
+            console.log(response)
+            res.status(200).json({ message: 'Deleted successfully' });
+          });
       });
     } catch (error) {
       return res.status(500).json({ errors: error.message });
