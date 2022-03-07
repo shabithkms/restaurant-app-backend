@@ -86,24 +86,47 @@ module.exports = {
   // Add new Domain
   addNewItem: (req, res) => {
     try {
+      const { Modifiers } = req.body;
+
+      req.body.Price = parseInt(req.body.Price);
+      let newModifiers = Modifiers.map((val) => {
+        console.log(val);
+        val.id = ObjectID(val.id);
+        return val;
+      });
+      let sum = Modifiers.reduce((acc, cur) => {
+        console.log(acc, cur);
+        acc = acc + cur.Price;
+        return acc;
+      }, 0);
+      let newPrice;
+      if (sum) {
+        newPrice = sum + req.body.Price;
+      } else {
+        newPrice = req.body.Price;
+      }
+      req.body.newPrice = newPrice;
+      req.body.Modifiers = newModifiers;
+      req.body.isAvailable = true;
       console.log(req.body);
       const { Name } = req.body;
-      req.body.isAvailable = true;
-      return new Promise(async () => {
-        let exist = await db.get().collection(collection.ITEM_COLLECTION).findOne({ Name });
-        if (!exist) {
-          db.get()
-            .collection(collection.ITEM_COLLECTION)
-            .insertOne(req.body)
-            .then(() => {
-              return res.status(200).json({ message: 'Item added successfully' });
-            });
-        } else {
-          return res.status(400).json({ errors: 'item already exist' });
-        }
-      });
+
+      // return new Promise(async () => {
+      //   let exist = await db.get().collection(collection.ITEM_COLLECTION).findOne({ Name });
+      //   if (!exist) {
+      //     db.get()
+      //       .collection(collection.ITEM_COLLECTION)
+      //       .insertOne(req.body)
+      //       .then(() => {
+      //         return res.status(200).json({ message: 'Item added successfully' });
+      //       });
+      //   } else {
+      //     return res.status(400).json({ errors: 'item already exist' });
+      //   }
+      // });
     } catch (error) {
-      return res.status(500).json({ errors: error.message });
+      console.log(error);
+      // return res.status(500).json({ errors: error.message });
     }
   },
   // Get all items
