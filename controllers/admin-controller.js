@@ -160,8 +160,11 @@ module.exports = {
                   },
                 ])
                 .toArray();
+              console.log(Price);
+              console.log(sum[0]);
               // Finding the total with adding modifier sum and item price
               let total = sum[0].total + Price;
+              console.log(total);
 
               db.get()
                 .collection(collection.ITEM_COLLECTION)
@@ -251,11 +254,10 @@ module.exports = {
             },
           ])
           .toArray();
-        console.log(items);
         return res.status(200).json({ message: 'Success', items });
       });
     } catch (error) {
-      // return res.status(500).json({ errors: error.message });
+      return res.status(500).json({ errors: error.message });
     }
   },
   // Delete item with ID
@@ -567,6 +569,7 @@ module.exports = {
   editModifier: (req, res) => {
     try {
       const { id, Name, Price } = req.body.formData;
+      Price = parseInt(Price);
       return new Promise(async () => {
         db.get()
           .collection(collection.MODIFIER_COLLECTION)
