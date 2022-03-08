@@ -5,12 +5,9 @@ const cors = require('cors');
 const db = require('./config/connection');
 
 // Routes
-const adminRouter=require('./routes/admin')
+const adminRouter = require('./routes/admin');
 
 const PORT = 3001;
-app.listen(PORT, () => {
-  console.log('server running on ' + PORT);
-});
 
 // Middlewares
 app.use(express.json());
@@ -33,9 +30,10 @@ db.connect((err) => {
     console.log(err);
   } else {
     console.log('Database connected');
+    app.listen(PORT, () => {
+      console.log('server running on ' + PORT);
+    });
   }
 });
 
-app.use('/api/admin',adminRouter)
-
-
+app.use('/api/admin', adminRouter);

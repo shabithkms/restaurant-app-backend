@@ -84,49 +84,109 @@ module.exports = {
     }
   },
   // Add new Domain
-  addNewItem: (req, res) => {
+  addNewItem: async (req, res) => {
     try {
       const { Modifiers } = req.body;
-
-      req.body.Price = parseInt(req.body.Price);
+      // converting all id into objectID
       let newModifiers = Modifiers.map((val) => {
         console.log(val);
-        val.id = ObjectID(val.id);
+        val = { mId: ObjectID(val) };
         return val;
       });
-      let sum = Modifiers.reduce((acc, cur) => {
-        console.log(acc, cur);
-        acc = acc + cur.Price;
-        return acc;
-      }, 0);
-      let newPrice;
-      if (sum) {
-        newPrice = sum + req.body.Price;
-      } else {
-        newPrice = req.body.Price;
-      }
-      req.body.newPrice = newPrice;
       req.body.Modifiers = newModifiers;
       req.body.isAvailable = true;
-      console.log(req.body);
-      const { Name } = req.body;
+      req.body.Price = parseInt(req.body.Price);
+      const { Name, Price } = req.body;
+      req.body.newPrice=Price
+      // Checking the item exist or not
+      let exist = await db.get().collection(collection.ITEM_COLLECTION).findOne({ Name });
+      if (!exist) {
+        // Adding new item with req.body
+        db.get()
+          .collection(collection.ITEM_COLLECTION)
+          .insertOne(req.body)
+          .then(async (response) => {
+            // Getting the id of inserted item
+            let insertedId = response.insertedId;
+            // Checking the item have modifier
+            if (Modifiers.length) {
+              let sum = await db
+                .get()
+                .collection(collection.ITEM_COLLECTION)
+                .aggregate([
+                  {
+                    $match: {
+                      _id: insertedId,
+                    },
+                  },
+                  {
+                    $project: {
+                      Name: 0,
+                      Category: 0,
+                      Description: 0,
+                      isAvailable: 0,
+                    },
+                  },
+                  {
+                    $unwind: '$Modifiers',
+                  },
+                  {
+                    $project: {
+                      mId: '$Modifiers.mId',
+                      Price: 1,
+                    },
+                  },
+                  {
+                    $lookup: {
+                      from: collection.MODIFIER_COLLECTION,
+                      localField: 'mId',
+                      foreignField: '_id',
+                      as: 'Modifier',
+                    },
+                  },
+                  {
+                    $project: {
+                      Price: 1,
+                      Modifier: { $arrayElemAt: ['$Modifier', 0] },
+                    },
+                  },
+                  {
+                    $group: {
+                      _id: null,
+                      total: { $sum: '$Modifier.Price' },
+                    },
+                  },
+                ])
+                .toArray();
+              // Finding the total with adding modifier sum and item price
+              let total = sum[0].total + Price;
 
-      // return new Promise(async () => {
-      //   let exist = await db.get().collection(collection.ITEM_COLLECTION).findOne({ Name });
-      //   if (!exist) {
-      //     db.get()
-      //       .collection(collection.ITEM_COLLECTION)
-      //       .insertOne(req.body)
-      //       .then(() => {
-      //         return res.status(200).json({ message: 'Item added successfully' });
-      //       });
-      //   } else {
-      //     return res.status(400).json({ errors: 'item already exist' });
-      //   }
-      // });
+              db.get()
+                .collection(collection.ITEM_COLLECTION)
+                .updateOne(
+                  { _id: insertedId },
+                  {
+                    $set: {
+                      newPrice: total,
+                    },
+                  }
+                )
+                .then(() => {
+                  // Item added and updated the price
+                  return res.status(200).json({ message: 'Item added successfully' });
+                });
+            } else {
+              // Item doesnot have Modifier
+              return res.status(200).json({ message: 'Item added successfully' });
+            }
+          });
+      } else {
+        // Item exist with same name
+        return res.status(400).json({ errors: 'item already exist' });
+      }
     } catch (error) {
       console.log(error);
-      // return res.status(500).json({ errors: error.message });
+      return res.status(500).json({ errors: error.message });
     }
   },
   // Get all items
@@ -235,6 +295,7 @@ module.exports = {
   addNewModifier: (req, res) => {
     try {
       const { Name, Price } = req.body;
+      Price = parseInt(Price);
       return new Promise(async () => {
         let exist = await db.get().collection(collection.MODIFIER_COLLECTION).findOne({ Name });
         if (!exist) {
