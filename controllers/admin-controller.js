@@ -100,6 +100,9 @@ module.exports = {
       // Checking the item exist or not
       let exist = await db.get().collection(collection.ITEM_COLLECTION).findOne({ Name });
       if (!exist) {
+        if (!Modifiers.length) {
+          req.body.Modifiers = [{}];
+        }
         // Adding new item with req.body
         db.get()
           .collection(collection.ITEM_COLLECTION)
@@ -241,6 +244,11 @@ module.exports = {
                 Modifiers: { $push: '$Modifier' },
               },
             },
+            {
+              $sort: {
+                _id: -1,
+              },
+            },
           ])
           .toArray();
         console.log(items);
@@ -280,8 +288,62 @@ module.exports = {
         let item = await db
           .get()
           .collection(collection.ITEM_COLLECTION)
-          .findOne({ _id: ObjectID(id) });
-        return res.status(200).json({ message: 'Success', item });
+          .aggregate([
+            {
+              $match: {
+                _id: ObjectID(id),
+              },
+            },
+            {
+              $unwind: '$Modifiers',
+            },
+            {
+              $project: {
+                Name: 1,
+                Category: 1,
+                Description: 1,
+                Price: 1,
+                isAvailable: 1,
+                newPrice: 1,
+                mId: '$Modifiers.mId',
+              },
+            },
+            {
+              $lookup: {
+                from: collection.MODIFIER_COLLECTION,
+                localField: 'mId',
+                foreignField: '_id',
+                as: 'Modifier',
+              },
+            },
+            {
+              $project: {
+                Name: 1,
+                Category: 1,
+                Description: 1,
+                Price: 1,
+                isAvailable: 1,
+                newPrice: 1,
+                Modifier: { $arrayElemAt: ['$Modifier', 0] },
+              },
+            },
+            {
+              $group: {
+                _id: '$_id',
+                Name: { $first: '$Name' },
+                Category: { $first: '$Category' },
+                Description: { $first: '$Description' },
+                Price: { $first: '$Price' },
+                isAvailable: { $first: '$isAvailable' },
+                newPrice: { $first: '$newPrice' },
+                Modifiers: { $push: '$Modifier' },
+              },
+            },
+          ])
+          .toArray();
+        item = item[0];
+        if (item) return res.status(200).json({ message: 'Item details get successfully', item });
+        else return res.status(400).json({ errors: 'Item doesnot exist with this ID' });
       });
     } catch (error) {
       console.log(error);
@@ -291,26 +353,119 @@ module.exports = {
   // Update Item details
   editItem: (req, res) => {
     try {
-      const { Name, Category, Description, Price, id } = req.body.formData;
+      let { Name, Category, Description, Price, id, newModifiers } = req.body.formData;
+      Price = parseInt(Price);
       if (!ObjectID.isValid(id)) return res.status(500).json({ errors: 'Please use a valid id' });
-
-      return new Promise(() => {
-        db.get()
-          .collection(collection.ITEM_COLLECTION)
-          .updateOne(
-            { _id: ObjectID(id) },
-            {
-              $set: {
-                Name,
-                Category,
-                Description,
-                Price,
+      console.log(newModifiers);
+      let Modifiers = newModifiers.map((val) => {
+        val = { mId: ObjectID(val) };
+        return val;
+      });
+      return new Promise(async () => {
+        if (newModifiers.length > 0) {
+          db.get()
+            .collection(collection.ITEM_COLLECTION)
+            .updateOne(
+              {
+                _id: ObjectID(id),
               },
-            }
-          )
-          .then((response) => {
-            return res.status(200).json({ message: 'updated successfully' });
-          });
+              {
+                $set: {
+                  Name,
+                  Description,
+                  Category,
+                  Price,
+                  Modifiers,
+                },
+              }
+            )
+            .then(async () => {
+              let sum = await db
+                .get()
+                .collection(collection.ITEM_COLLECTION)
+                .aggregate([
+                  {
+                    $match: {
+                      _id: ObjectID(id),
+                    },
+                  },
+                  {
+                    $project: {
+                      Name: 0,
+                      Category: 0,
+                      Description: 0,
+                      isAvailable: 0,
+                    },
+                  },
+                  {
+                    $unwind: '$Modifiers',
+                  },
+                  {
+                    $project: {
+                      mId: '$Modifiers.mId',
+                      Price: 1,
+                    },
+                  },
+                  {
+                    $lookup: {
+                      from: collection.MODIFIER_COLLECTION,
+                      localField: 'mId',
+                      foreignField: '_id',
+                      as: 'Modifier',
+                    },
+                  },
+                  {
+                    $project: {
+                      Price: 1,
+                      Modifier: { $arrayElemAt: ['$Modifier', 0] },
+                    },
+                  },
+                  {
+                    $group: {
+                      _id: null,
+                      total: { $sum: '$Modifier.Price' },
+                    },
+                  },
+                ])
+                .toArray();
+              // Finding the total with adding modifier sum and item price
+              let total = sum[0].total + Price;
+
+              db.get()
+                .collection(collection.ITEM_COLLECTION)
+                .updateOne(
+                  { _id: ObjectID(id) },
+                  {
+                    $set: {
+                      newPrice: total,
+                    },
+                  }
+                )
+                .then(() => {
+                  // Item added and updated the price
+                  return res.status(200).json({ message: 'Item Updated successfully' });
+                });
+            });
+        } else {
+          db.get()
+            .collection(collection.ITEM_COLLECTION)
+            .updateOne(
+              { _id: ObjectID(id) },
+              {
+                $set: {
+                  Name,
+                  Category,
+                  Description,
+                  Price,
+                  newPrice: Price,
+                  Modifiers: [{}],
+                },
+              }
+            )
+            .then(() => {
+              return res.status(200).json({ message: 'updated successfully' });
+            });
+        }
       });
     } catch (error) {
       console.log(error);
@@ -562,8 +717,7 @@ module.exports = {
             },
           ])
           .toArray();
-        console.log(item);
-        if (item.length>0) return res.status(200).json({ message: 'Item details get successfully', item });
+        if (item.length > 0) return res.status(200).json({ message: 'Item details get successfully', item });
         else return res.status(400).json({ errors: 'Item doesnot exist with this ID' });
       });
     } catch (error) {
